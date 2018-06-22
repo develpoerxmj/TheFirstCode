@@ -1,0 +1,582 @@
+build.gradle:先进的项目构建工具，使用基于Groovy的领域特定语言（DSL）来声明项目设置
+jcenter()：代码托管仓库，有很多Android开源项目，声明此配置，可以轻松引用jcenter上的开源项目
+classpath 'com.android.tools.build:gradle:2.2.0'：构建Android项目需声明的插件
+dependencies依赖：本地依赖，库依赖，远程依赖
+
+Menu:
+	引入menu:
+	@Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu, menu);
+        return true;
+    }
+	监听:
+	@Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        return true;
+    }
+
+Activity：
+Intent:启动活动，启动服务，发送广播等
+	显示Intent：
+	隐式Intent：
+	
+浏览器：Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse("http://www.baidu.com"));
+        startActivity(intent);
+		
+电话：	Intent i = new Intent(Intent.ACTION_DIAL);
+        i.setData(Uri.parse("tel:10001"));
+        startActivity(i);
+
+//Intent返回值		
+ActivityOne:
+		Intent intent  = new Intent(ActivityOne.this, ActivityTwo.class);
+		startActivityForResult(intent, code);
+		
+		onActivityResult(int requestCode, int resultCode, Intent intent){
+			//判断
+			switch(requestCode){
+				case code:
+				if(resultCode == RESULT_OK){
+					String data = intent.getStringExtra(TAG);
+				}
+			}
+		}
+ActivityTwo:
+		Intent intent = new Intent();
+		intent.putExtra(TAG,content);
+		setResult(RESULT_OK, intent);
+		finish();
+		
+Activity的生存期：
+	onCreate():第一次创建时调用，可进行初始化操作
+	onStart():活动由不可见到可见时调用
+	onResume():活动准备与用户交互时调用，位于返回栈栈顶，并处于运行状态
+	onPause:在系统准备去启动或回复另一个活动时调用
+	onStop():在系统完全不可见时调用
+	onDestroy():活动销毁前调用，之后活动销毁
+	onRestart():活动由停止状态转为运行转台前调用，即活动被重新启动了
+	完整生存期：onCreate --- onDestroy
+	可见生存期：onStart --- onStop
+	前台生存期：onResume --- onPause
+activity的四种状态：
+	运行状态：处于栈顶
+	暂停状态：不处于栈顶但可见
+	停止状态：不处于栈顶并不可见
+	销毁状态：从返回栈移除
+	
+Activity的启动模式：
+	standard：默认模式，每次启动都活创建新的activity
+	singleTop：启动活动时检查该活动是否在返回栈的栈顶，是就直接使用，否则创建新的activity
+	singleTask：启动活动时检查返回栈是否有该活动，有就直接使用，并且把该活动之上的所有activity出栈；否则创建activity
+	singleInstance：启动活动会创建新的返回栈来管理该活动
+
+活动实践：
+	1、知晓当前在那个活动
+	public class BaseActivity extends AppCompatActivity{
+		@Override
+		protected void onCreated(Bundle saveInstanceState){
+			super.onCreate(saveInstanceState);
+			Log.d("BaseActivity", getClass().getSimpleName());
+		}
+	}
+	then:让所有activity继承BaseActivity即可
+	
+	2、随时退出程序
+	//对activity进行管理
+	public class ActivityCollector{
+		public static List<Activity> list = new ArrayList<>();
+		public static void addActivity(Activity activity){
+			list.add(activity);
+		}
+		public static void removeActivity(Activity activity){
+			list.remove(activity);
+		}
+		public static void finishAllActivity(){
+			for(Activity activity : list){
+				if(!activity.isFinishing()){
+					activity.finish();
+				}
+			}
+		}
+	}
+	//创建活动时加入list，销毁时移出list
+	public class BaseActivity extends AppCompatActivity{
+		@Override
+		protected void onCreated(Bundle saveInstanceState){
+			super.onCreate(saveInstanceState);
+			Log.d("BaseActivity", getClass().getSimpleName());
+			ActivityCollector.addActivity(this);
+		}
+		
+		@Override
+		protected void onDestroy(){
+			super.onDestroy();
+			ActivityCollector.removeActivity(this);
+		}
+	}
+	
+	调用ActivityCollector.finishAllActivity(),就可结束所有activity，退出程序
+	
+UI：
+Button：
+	android:textAllCaps="false" -----button中文字不自动转为大写
+ProgressBar:
+	style="?andrpod:attr/progressBarStyleHorizontal" ------进度条横向
+	android:max=100 ------进度条最大值
+AlertDialog:
+	AlertDialog.Builder build = new AlertDialog.Builder(context);
+	baidu.setTitle("").setMessage("").setCancelable(boolean)
+	.setPasitiveButton("",DialogInterface).setNegativeButton("",DialogInterface)
+	.show();
+ProgressDialog:
+	与AlertDialog类似
+布局:
+LinearLayout：线性布局
+	android:layout_gravity    -----控件在布局中的位置
+	android:gravity    -------文字在控件中的位置
+	方向为水平时，垂直方向有效；方向为垂直时，水平方向有效
+百分比布局：
+	添加依赖：compile 'com.android.support:percent:24.2.1'
+	分为：PercentFrameLayout 和 PercentRelationLayout
+	Android studio2.2一下会出现错误，不影响
+ListView:
+	adapter中getView()方法，每次子项滚到屏幕内时调用
+	LayoutInflater.from(context).inflate( , ,false); view添加父布局，无法再添加到ListView中
+ListView优化：
+	在getView()中：
+	缓存view：if(convertView == null){
+					convertView = LayoutInflater.from(context).inflate();
+				}
+	借助ViewHolder：
+				MyHolder holder;
+				if(convertView == null){
+					convertView = LayoutInflater.from(context).inflate( , , );
+					holder = new MyHolder();
+					holder.text = findViewById();
+					holder.image = findViewById();
+					convertView.setTag(holder);
+				}else{
+					holder = (MyHolder)convertView.getTag();
+				}
+				class MyHolder{
+					private TextView text;
+					private ImageView image;
+				}
+RecyclerView:
+	adapter写法：实例：
+	public class RAdapter extends RecyclerView.Adapter<RAdapter.MyHolder> {
+
+		private List<StudentBean> list;
+
+		public RAdapter(List<StudentBean> list) {
+			this.list = list;
+		}
+
+		@Override
+		public MyHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+			View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_adapter, parent, false);
+			MyHolder holder = new MyHolder(view);
+			return holder;
+		}
+
+		@Override
+		public void onBindViewHolder(MyHolder holder, int position) {
+			holder.textView.setText(list.get(position).getName());
+			holder.imageView.setImageResource(list.get(position).getId());
+		}
+
+		@Override
+		public int getItemCount() {
+			return list.size();
+		}
+
+		public class MyHolder extends RecyclerView.ViewHolder {
+			ImageView imageView;
+			TextView textView;
+				public MyHolder(View itemView) {
+				super(itemView);
+				imageView = (ImageView) itemView.findViewById(R.id.iv);
+				textView = (TextView) itemView.findViewById(R.id.tv);
+			}
+		}
+	}
+	
+	activity中：recyclerView.setAdapter(adapter)；
+				recyclerView.setLayoutManager();  //设置布局方式
+
+Fragment:
+动态添加fragment:
+	1、获取FragmentManager：getSupportFragmentManager();
+	2、开启事务：manager.beginTransaction();
+	3、替换碎片：transaction.replace(id, fragment);
+	4、提交事务：transaction.commit();
+activity中获取fragment:
+	getSupportFragmentManager().findFragmentById();
+fragment中获取activity:
+	getActivity();
+fragment生命周期：
+	onAttach() - onCreate() - onCreateView() - onActivityCreated() 
+	- onStart() - onResume() - onPause() - onStop() - onDestroyView()
+	- onDestroy() - onDetach()
+限定符
+	small：小屏幕资源            ldpi：低分辨率资源(120以下)
+	normal：中等屏幕资源		 mdpi：中分辨率资源(120-160)
+	large：大屏幕资源			 hdpi：高分辨率资源(160-240)
+	xlarge：超大屏幕资源		 xhdpi：超高分辨率资源(240-320)
+								 xxhdpi：超超高分辨率资源(320-480)
+	land：横屏资源    port：竖屏资源
+广播：
+标准广播：异步执行，所有广播接收器同时接收
+有序广播：同步执行，同时只会有一个广播接收器接收
+广播接收器：动态注册和静态注册
+	动态注册：IntentFilter filter = new IntentFilter();
+			  filter.addAction("");
+			  registerReceiver(receiver, filter);
+		必须手动取消注册：unregisterReceiver(receiver);
+		
+	静态注册：<receiver 
+					android:name = "" 
+					android:enabled = "ture"   //是否启用该广播
+					android:exported = "ture"  //是否允许接受本程序以外的广播
+			  ></receiver>
+	
+	网络是否可用：ConnevtivityManager manager = (ConnevtivityManager)getSystemService(CONNECTIVITY_SERVICE);
+				  NetworkInfo info = manager.getActiveNetworkInfo();
+				  info.isAvailable()
+发送广播：
+	标准广播：Intent intent = new Intent("action");
+			  sendBroadcast(intent);
+	有序广播：sendOrderedBroadcast(intent,null);
+			  <intent-filter 
+					android:priority = "100">//设置优先级
+			  </intent-filter>
+			  abortBroadcast();//截断广播
+本地广播：-------无法静态注册
+	发送本地广播：
+	LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
+	Intent intent = new Intent("action");
+	manager.sendBroadcast(intent);
+	注册本地广播：
+	IntentFilter filter = new IntentFilter();
+	filter.addAction("");
+	LocalReceiver receiver = new LocalReceiver();
+	manager.registerReceiver(receiver, filter);
+	
+数据存储 -------持久化技术：
+	文件存储：简单的文本数据或二进制数据   默认存储在data/data/<package name>/files/路径下
+	1、将数据存到文件中(写)
+	Context中，openFileOutput(fileName, "mode")得到FileOutputStream对象
+		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(FileOutputStream));
+		MODE_PRIVATE:所写内容覆盖原文件内容(默认)
+		MODE_ADDEND:如果文件存在，添加，不存在则创建
+		
+	example:
+	private void saveFile(String content){
+		FileOutputStream fos = null;
+        BufferedWriter writer = null;
+        try {
+            fos = openFileOutput("data", MODE_PRIVATE);  写出的文件名
+            writer = new BufferedWriter(new OutputStreamWriter(fos));
+            writer.write(string);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }finally {
+            try {
+				if(writer != null){
+					writer.close();
+				}                
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            
+        }
+		
+	}
+	
+	2、从文件中读取数据(读)
+	Context中，openFileInput(fileName)得到FileInputStream对象   
+		BufferedReader reader = new BufferedReader(new InputStreamReader(FileInputStream));
+	example:
+	private String loadFile(){
+        FileInputStream fis = null;
+        BufferedReader reader = null;
+        StringBuilder builder = new StringBuilder();
+        try {
+            fis = openFileInput("data");    //读取的文件名
+            reader = new BufferedReader(new InputStreamReader(fis));
+            String line = "";
+            if ((line = reader.readLine()) != null){
+                builder.append(line);
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }finally {
+            if (reader != null){
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return builder.toString();
+    }
+	
+	SharedPreferences存储
+	得到SharedPreferences()对象的方法：
+	1、Context类中getSharedPreferences()  存放在/data/data/<package name>/shared_prefs/目录下
+		两个参数1、指定SharedPreferences文件的名称，
+				2、指定操作模式(MODE_PRIVATE(同0,表示只有当前程序能够读写),MODE_WORLD_READABE和MODE_WOELD_WRITEABLE(4.2废弃)
+								,MODE_MULTI_PROCESS(6.0废弃))
+	2、Activity中getPreferences()
+		一个参数：操作模式-----自动将当前activity的类作为文件名
+	3、PreferenceManager中getDefaultSharedPreferences()
+		静态方法,一个参数(Context),自动使用应用程序包名为前缀来命名
+	
+	存储数据的步骤：
+	1、SharedPreferences对象的edit()获取SharedPreferences.Editor对象
+	2、SharedPreferences.Editor对象保存数据
+	3、调用apply()提交数据
+	读取数据:
+	SharedPreferences对象的get方法      例子：记住密码
+	
+	SQLite数据库存储       文件存放在/data/data/<package name>/databases/下
+	抽象类：SQLiteOpenHelper
+	getReadableDatabase()与getWritableDatabase()创建或打开数据库
+	当不可写入时，getWritableDatabase出现异常，getReadableDatabase()以只读方式打开
+	
+	操作数据：
+	增(insert):三个参数，1表名；2null；3ContentValues对象
+		ContentValues values = new ContentValues();
+		values.put(键,值);
+		...
+		SQLiteDatabase.insert(表名, null, values);
+	改(update):四个参数，1表名；2ContentValues；3,4约束某行某列数据
+		例：database.update("book",values,"name=?",new String[]{"大主宰"});
+	删(delete):三个参数，1表名；2,3删除哪行
+		例：database.delete("book","price > ?",new String[]{"50"});
+	查(query)
+		例：Cursor cursor = database.query("book",null,null,null,null,null,null);
+            if (cursor.moveToNext()){
+                do {
+                    String name = cursor.getString(cursor.getColumnIndex("name"));
+                    double price = cursor.getDouble(cursor.getColumnIndex("price"))；                        Log.d("DateBaseActivity", "onClick: "+name+"::::"+price);
+                }while (cursor.moveToNext());
+            }
+	使用SQL语句操作数据库：
+		增删改(db.execSQL()) 查(db.rawQuery())
+	
+	开源android数据库框架LitePal(对象关系映射(ORM))：
+	1.添加依赖：如 compile 'org.litepal.android:core:1.4.1'
+	2.main下新建assets目录，在目录中新建litepal.xml文件，添加内容：
+		<?xml version="1.0" encoding="utf-8"?>
+		<litepal>
+			<dbname value="DatabaseName" ></dbname>
+			<version value="2" ></version>   数据库版本号
+			<list>
+				映射模型类
+				<mapping class="com.example.chaptersix.Book"></mapping>
+				<mapping class="com.example.chaptersix.Category"></mapping>
+			</list>
+		</litepal>
+	3.Connector.getDatabase()就可创建数据库
+	
+	添加数据：
+	继承DataSupport,创建对象，save()
+	
+	更新数据：
+	1，例：
+		Book book = new Book();
+		book.setName("STang");
+		book.setPrice(78);
+		book.save();
+		book.setPrice(15);
+		book.save();
+	2，例：
+		Book book = new Book();
+		book.setName("DaZhuZai");
+		book.updateAll("id = ?", "1");
+	更新数据类型默认值时：例：
+		book.setToDefault("press");
+		book.updateAll("id = ?", "3");
+	
+	删除数据
+	DataSupport.deleteAll();
+	
+	查询数据：例：
+	List<Book> list = DataSupport.findAll(Book.class);
+	for (Book book: list) {
+		System.out.println(book.getId());
+	}
+
+	System.out.println(DataSupport.findFirst(Book.class).getId());
+
+	System.out.println(DataSupport.findLast(Book.class).getId());
+		
+数据共享(内容提供者Content Provider)不同程序之间实现数据共享
+	运行时权限
+	Android6.0以上，需要危险权限时，需检查权限
+	例：打电话权限：
+		if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+            callPhone();
+		} else {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.CALL_PHONE}, 1);
+        }
+		
+		@Override
+		public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+			if (requestCode == 1) {
+				if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+					callPhone();
+				} else {
+					Toast.makeText(this, "no permission", Toast.LENGTH_SHORT).show();
+				}
+			}
+		}
+		
+	访问其他程序的数据：
+	1，通过Context中的getContextResolver()得到ContextResolver实例
+	2，内容uri参数：authority和path(例如：content://com.example.chapterseven.provider/table)
+		authority：区分不同程序，一般用程序包名
+		path：区分同意程序中不同的表
+		前面加上协议声明content
+	查询：Cursor cursor = getContextResolver().query(uri,projection,selection,selectionArgs,sortOrder);
+			uri:指定某个程序中的某张表
+			projection:指定查询的列名
+			selection:指定where的约束条件
+			selectionArgs:where中占位符提供的值
+			orderBy:查询结果的排列方式
+	读取系统联系人：
+	//请求权限
+	if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED){
+		selectContact();
+    }else {
+        ActivityCompat.requestPermissions(this,new String[]{Manifest.permission.READ_CONTACTS},1);
+    }
+	@Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (requestCode == 1){
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                selectContact();
+            }
+        }
+    }
+	//读取联系人
+	private void selectContact() {
+        ContentResolver resolver = getContentResolver();
+        Cursor cursor = null;
+        try {
+            cursor = resolver.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,null, null, null, null);
+            if (cursor != null){
+                while (cursor.moveToNext()){
+                    String name = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
+                    String phone = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+                    ContactBean bean = new ContactBean(name, phone);
+                    list.add(bean);
+                }
+                adapter.notifyDataSetChanged();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (cursor != null){
+                cursor.close();
+            }
+        }
+    }
+	
+	创建自己的ContentProvider
+	1，继承ContentProvider，重写6个方法
+		onCreate():初始化内容提供器，通常完成数据库的创建与升级，返回true表示成功
+		query():从内容提供器中查询数据，结果放在Cursor对象中返回
+		insert():添加一条数据，返回一个表示新纪录的url
+		update():更新已有数据，返回受影响的行数
+		delete():删除数据，返回被删除的行数
+		getType():传入uri返回相应的MIME类型；即解析uri，分析出希望访问的表和数据
+		
+		MIME字符：
+			1，必须以vnd开头
+			2，如果内容uri以路径结尾，后接android.cursor.dir/
+				如果以id结尾，后接android.cursor.item
+			3,最后接上vnd.<authority>.<path>
+			
+			例如：uri为content://com.example.chapterserven.provider/table
+			MIME为：vnd.android.cursor.dir/vnd.com.example.chapterserven.provider.table
+			
+			例如：uri为content://com.example.chapterserven.provider/table/1
+			MIME为：vnd.android.cursor.item/vnd.com.example.chapterserven.provider.table
+		
+		uri两种格式：
+			以路径结尾：如content://com.example.chapterseven.provider/table，访问表中所有数据
+			以id结尾：content://com.example.chapterseven.provider/table/1，访问表中拥有相应id的数据
+		通配符
+			*：表示匹配任意长度的任意字符
+			#：表示匹配任意长度的数字
+		如：
+			匹配任意表的uri：如content://com.example.app/*
+			匹配任意table表中任意一行数据uri：如content://com.example.app/table/#
+		
+手机多媒体：
+	通知(Notification)：
+	1.得到NotificationManager实例：
+		getSystemService(Context.NOTIFICATION_SERVICE);
+	2.使用Builder构造Notification对象
+	问题：不同的版本API不稳
+	
+	用support-v4提供的NotificationCompat得到Notification对象能保证所有版本正常
+	Notification notification = new NotificationCompat.Builder(context)
+									.setContentTitle("")
+									....
+									.build();
+	3.调用NotificationManager.notify(id,notification)
+
+	通知跳转：setContentIntent(pendingIntent)
+	PendingIntent.getActivity()/getBroadcast()/getService()
+		四个参数 1.context,2.通常传0 ,3.intent, 4.通常传0
+	点击消失：1：setAutoCancel(true); 2:manager.cancel(id)
+	设置震动：setVibrate(静止时长,震动时长,.......);
+		声明权限:<uses-permission android:name="android.permission.VIBRATE"/>
+	设置声音: setSound()
+	控制LED灯:setLights(颜色，亮时间，暗时间)
+	
+	设置默认效果:setDefaults(NotificationCompat.DEFAULT_ALL)
+	长文字
+	setStyle(new NotificationCompat.BigTextStyle().bigText(""))
+	大图片
+	setStyle(new NotificationCompat.BigPictureStyle().bigPicture(Bitmap))
+	通知重要程度：
+	setPriority()
+	
+	调用摄像头和相册
+	
+	
+	
+	
+		
+		
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	data/data/com.example.chaptersix/databases
+	
+	
+		
+	
+
+	
+	
+	
